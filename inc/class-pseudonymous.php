@@ -54,6 +54,7 @@ class Pseudonymous {
 			add_filter( 'query', array( $this, 'anonymize_wp_user_get_data_by' ), PHP_INT_MIN, 1 );
 			add_filter( 'pre_get_posts', array( $this, 'anonymize_author_permalink' ), PHP_INT_MIN, 1 );
 			add_filter( 'get_avatar_url', array( $this, 'anonymize_get_avatar_url' ), PHP_INT_MIN, 3 );
+			add_filter( 'rest_prepare_user', array( $this, 'anonymize_rest_prepare_user' ), PHP_INT_MIN, 3 );
 
 			add_filter( 'wp_title', array( $this, 'itg_anonymize_htmltitle' ) );
 		} else {
@@ -63,6 +64,38 @@ class Pseudonymous {
 
 		$user = WP_User::get_data_by( 'ID', 2 );
 		update_user_caches( $user );
+	}
+
+	/**
+	 * Filters user data returned from the REST API.
+	 *
+	 * @param WP_REST_Response $response The response object.
+	 * @param object           $user     User object used to create response.
+	 * @param WP_REST_Request  $request  Request object.
+	 */
+	public function anonymize_rest_prepare_user( $response, $user, $request ) {
+		if ( isset( $response->data['name'] ) ) {
+			$pseudonymous_user_nicename = get_user_meta( $response->data['id'], 'pseudonymous_user_nicename', true );
+			if ( $pseudonymous_user_nicename ) {
+				$response->data['name'] = $pseudonymous_user_nicename;
+			}
+		}
+
+		if ( isset( $response->data['slug'] ) ) {
+			$pseudonymous_user_login = get_user_meta( $response->data['id'], 'pseudonymous_user_login', true );
+			if ( $pseudonymous_user_login ) {
+				$response->data['slug'] = $pseudonymous_user_login;
+			}
+		}
+
+		if ( isset( $response->data['avatar_urls'] ) ) {
+			$pseudonymous_user_email = get_user_meta( $response->data['id'], 'pseudonymous_user_email', true );
+			if ( $pseudonymous_user_email ) {
+				$response->data['avatar_urls'] = rest_get_avatar_urls( $pseudonymous_user_email );
+			}
+		}
+
+		return $response;
 	}
 
 	/**
@@ -117,7 +150,7 @@ class Pseudonymous {
 		if ( isset( $comment->comment_author_email ) ) {
 			$user = get_user_by( 'email', $comment->comment_author_email );
 			if ( $user ) {
-				$user_login             = $user->user_login;
+				$user_login              = $user->user_login;
 				$pseudonymous_user_login = get_user_meta( $user->ID, 'pseudonymous_user_login', true );
 
 				if ( $pseudonymous_user_login ) {
@@ -147,7 +180,7 @@ class Pseudonymous {
 		$user = WP_User::get_data_by( 'ID', $author_id );
 
 		if ( $user ) {
-			$user_login             = $user->user_login;
+			$user_login              = $user->user_login;
 			$pseudonymous_user_login = get_user_meta( $author_id, 'pseudonymous_user_login', true );
 
 			if ( $user_login && $pseudonymous_user_login ) {
@@ -445,7 +478,7 @@ class Pseudonymous {
 		}
 
 		foreach ( (array) $authors as $author ) {
-			$author                 = get_userdata( $author->ID );
+			$author                  = get_userdata( $author->ID );
 			$pseudonymous_user_login = get_user_meta( $author->ID, 'pseudonymous_user_login', true );
 
 			if ( isset( $query->query_vars['author_name'] ) && '' !== $query->query_vars['author_name'] ) {
