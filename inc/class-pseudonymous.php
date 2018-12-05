@@ -61,9 +61,6 @@ class Pseudonymous {
 			$gw_admin = Pseudonymous_Admin::get_instance();
 			$gw_admin->init_hooks();
 		}
-
-		$user = WP_User::get_data_by( 'ID', 2 );
-		update_user_caches( $user );
 	}
 
 	/**
